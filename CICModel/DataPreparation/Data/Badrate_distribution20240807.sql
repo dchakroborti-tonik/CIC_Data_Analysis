@@ -1,0 +1,201 @@
+with base as 
+(
+-- Query for dfgranted
+SELECT
+  digitalLoanAccountId,
+  crifApplicationId,
+  customerId,
+  processEngineGuid,
+  requestGuid,
+  ContractHistoryType,
+  CBContractCode,
+  ContractEndDate,
+  ContractPhase,
+  ContractPhaseDesc,
+  ContractStartDate,
+  ContractStatus,
+  ContractStatusDesc,
+  ContractType,
+  ContractTypeDesc,
+  Currency,
+  CurrencyDesc,
+  LastUpdateDate,
+  OriginalCurrency,
+  OriginalCurrencyDesc,
+  ProviderCodeEncrypted,
+  ProviderContractNo,
+  ReferenceNo,
+  Role,
+  RoleDesc,
+  BilledAmount,
+  BoardResolutionFlag,
+  BoardResolutionFlagDesc,
+  CancellationDate,
+  CardReferenceCode,
+  ChargedAmount,
+  CreditLimit,
+  CreditPurpose,
+  CreditPurposeDesc,
+  FinancedAmount,
+  FirstPaymentDate,
+  FlagCardUsed,
+  HolderLiability,
+  HolderLiabilityDesc,
+  InstallmentType,
+  InstallmentTypeDesc,
+  InstallmentsNumber,
+  LastChargeDate,
+  LastPaymentAmount,
+  LastPaymentDate,
+  MinPaymentIndicator,
+  MinPaymentIndicatorDesc,
+  MinPaymentPercentage,
+  MonthlyPaymentAmount,
+  NextPayment,
+  NextPaymentDate,
+  OutstandingBalance,
+  OutstandingBalanceUnbilled,
+  OutstandingPaymentsNumber,
+  OverallCreditLimit,
+  OverdueDays,
+  OverdueDaysDesc,
+  OverduePaymentsAmount,
+  OverduePaymentsNumber,
+  PaymentMethod,
+  PaymentMethodDesc,
+  PaymentPeriodicity,
+  PaymentPeriodicityDesc,
+  PremiumCard,
+  PremiumCardDesc,
+  ReorganizedCreditCode,
+  ReorganizedCreditCodeDesc,
+  ServicesLinesNo,
+  TimesCardUsed,
+  TransactionType,
+  TransactionTypeDesc,
+  Utilization,
+  LinkedSubject_CBSubjectCode,
+  LinkedSubject_Name,
+  LinkedSubject_Role,
+  LinkedSubject_RoleDesc,
+  Note_TypeDesc,
+  Note_Text,
+  Note_Type,
+  run_date,
+  NULL AS ContractRequestDate,
+  'granted' AS source
+FROM
+  prj-prod-dataplatform.risk_credit_cic_data.granted_contracts
+
+UNION ALL
+
+-- Query for dfnongranted
+SELECT
+  digitalLoanAccountId,
+  crifApplicationId,
+  customerId,
+  processEngineGuid,
+  requestGuid,
+  NULL AS ContractHistoryType,
+  CBContractCode,
+  NULL AS ContractEndDate,
+  ContractPhase,
+  ContractPhaseDesc,
+  NULL AS ContractStartDate,
+  NULL AS ContractStatus,
+  NULL AS ContractStatusDesc,
+  ContractType,
+  ContractTypeDesc,
+  NULL AS Currency,
+  NULL AS CurrencyDesc,
+  LastUpdateDate,
+  NULL AS OriginalCurrency,
+  NULL AS OriginalCurrencyDesc,
+  ProviderCodeEncrypted,
+  ProviderContractNo,
+  ReferenceNo,
+  Role,
+  RoleDesc,
+  NULL AS BilledAmount,
+  NULL AS BoardResolutionFlag,
+  NULL AS BoardResolutionFlagDesc,
+  NULL AS CancellationDate,
+  NULL AS CardReferenceCode,
+  NULL AS ChargedAmount,
+  CreditLimit,
+  NULL AS CreditPurpose,
+  NULL AS CreditPurposeDesc,
+  FinancedAmount,
+  NULL AS FirstPaymentDate,
+  NULL AS FlagCardUsed,
+  NULL AS HolderLiability,
+  NULL AS HolderLiabilityDesc,
+  NULL AS InstallmentType,
+  NULL AS InstallmentTypeDesc,
+  InstallmentsNumber,
+  NULL AS LastChargeDate,
+  NULL AS LastPaymentAmount,
+  NULL AS LastPaymentDate,
+  NULL AS MinPaymentIndicator,
+  NULL AS MinPaymentIndicatorDesc,
+  NULL AS MinPaymentPercentage,
+  MonthlyPaymentAmount,
+  NULL AS NextPayment,
+  NULL AS NextPaymentDate,
+  NULL AS OutstandingBalance,
+  NULL AS OutstandingBalanceUnbilled,
+  NULL AS OutstandingPaymentsNumber,
+  NULL AS OverallCreditLimit,
+  NULL AS OverdueDays,
+  NULL AS OverdueDaysDesc,
+  NULL AS OverduePaymentsAmount,
+  NULL AS OverduePaymentsNumber,
+  NULL AS PaymentMethod,
+  NULL AS PaymentMethodDesc,
+  PaymentPeriodicity,
+  PaymentPeriodicityDesc,
+  NULL AS PremiumCard,
+  NULL AS PremiumCardDesc,
+  NULL AS ReorganizedCreditCode,
+  NULL AS ReorganizedCreditCodeDesc,
+  NULL AS ServicesLinesNo,
+  NULL AS TimesCardUsed,
+  NULL AS TransactionType,
+  NULL AS TransactionTypeDesc,
+  NULL AS Utilization,
+  LinkedSubject_CBSubjectCode,
+  LinkedSubject_Name,
+  LinkedSubject_Role,
+  LinkedSubject_RoleDesc,
+  Note_TypeDesc,
+  Note_Text,
+  Note_Type,
+  run_date,
+  ContractRequestDate,
+  'nongranted' AS source
+FROM
+  prj-prod-dataplatform.risk_credit_cic_data.notgranted_contracts
+)
+Select lmt.new_loan_type
+, case when date_trunc(lmt.disbursementDateTime, day) <= '2024-03-31' then 'Train_Validation' 
+         when date_trunc(lmt.disbursementDateTime, day) >'2024-03-31' and date_trunc(lmt.disbursementDateTime, day) <= '2024-04-30' then 'Test' else 'Other' end targetdataselectiontype
+, min(base.run_date) firstavailabledate
+, max(base.run_date) lastavailabledate
+, count(distinct case when defFPD15 = 1 then lmt.loanAccountNumber end) defFPD15
+, count(distinct case when obsFPD15 = 1 then lmt.loanAccountNumber end) obsFPD15
+, count(distinct case when ldd.obs_min_inst_def30 >= 1 and ldd.min_inst_def30 = 1 then lmt.loanAccountNumber end) defFPD30
+, count(distinct case when ldd.obs_min_inst_def30 >= 1 then lmt.loanAccountNumber end) obsFPD30
+, count(distinct case when (lmt.defFPD15 = 1 or defSPD15 =1) then lmt.loanAccountNumber end) defFSPD15
+, count(distinct case when (obsSPD15 = 1) then lmt.loanAccountNumber end) obsFSPD15
+, count(distinct case when ldd.obs_min_inst_def30 >=2 and ldd.min_inst_def30 in (1,2) then lmt.loanAccountNumber end) defFSPD30
+, count(distinct case when ldd.obs_min_inst_def30 >=2 then lmt.loanAccountNumber end) obsFPS30
+, count(distinct case when ldd.obs_min_inst_def30 >= 3 and ldd.min_inst_def30 in (1,2,3) then lmt.loanAccountNumber end) defFSTPD30
+, count(distinct case when ldd.obs_min_inst_def30 >= 3 then lmt.loanAccountNumber end) obsFSTPD30
+from base
+inner join risk_credit_mis.loan_master_table lmt on lmt.digitalLoanAccountId = base.digitalLoanAccountId
+inner join prj-prod-dataplatform.risk_credit_mis.loan_deliquency_data ldd on ldd.loanAccountNumber = lmt.loanAccountNumber
+where lmt.flagDisbursement = 1
+and lmt.disbursementDateTime is not null
+and date_trunc(lmt.disbursementDateTime, day) >= '2023-01-10'
+and new_loan_type in ('Quick', 'SIL-Instore')
+group by 1,2
